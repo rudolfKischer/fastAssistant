@@ -20,4 +20,29 @@
     - `python3 main.py`
 
 
+# Desired Features
+
+- Faster Text Generation time
+- Inference optimization on with vllm
+- Realistic Text to Speach Using 11 labs
+- Better transcriptions
+    - Using a better a bigger STT
+    - continous STT merge from different qualities
+    - STT that can handle multiple speakers
+    - Take a look at whisper diarise
+- The ability for others to interrupt while speaking
+- The ability for it to interrupt while speaking
+     - Maybe have some continous innner and outer monologue
+     - This way the LLM can decide when it thinks its a good time to talk
+- Web crawling agent, so it can search things up
+- Specialized API LLM so it can use tools, (look at Gorrilla LLM)
+- Access to cli to run code and commands
+- GUI
+      - Could be something simple just to show when it is listening and when its talking
+      - Could be a realistic avatar that moves its mouth when it talks (Look at meta human)
+- specialized coding llm it can call on (codellama or wizard coder)
+- Mechanism for having process intensize tasks run on a server that it calls out to
+- 
+
+
 
