@@ -1,27 +1,55 @@
 from ctransformers import AutoModelForCausalLM
+from llama_cpp import Llama
+
+import random
 
 
 from queue import Queue
 from threading import Thread, Event as ThreadEvent
+
+import time
+
+delay_fillers = [
+    "Hmm, give me a moment...",
+    "Let me think on that for a sec...",
+    "Ah, let's see here...",
+    "Interesting, let me ponder that...",
+    "Hold on, thinking...",
+    "Hmm, let me gather my thoughts...",
+    "Bear with me a moment...",
+    "Just a bit... I'm sorting it out.",
+    "Hmm, need a second to process that...",
+    "Oh? Let me mull over that...",
+    "I see... give me a short pause...",
+    "Hold that thought...",
+    "Let me dive into that for a moment...",
+    "Ah, let me sift through my thoughts...",
+    "Just piecing it together...",
+    "Hmm, let it marinate for a second...",
+    "Hold on, it's coming to me...",
+    "I'm drawing it up, just a sec...",
+    "Almost there, give me a moment...",
+    "Let me reflect on that briefly..."
+]
 
 
 default_params = {
     'model_path': "TheBloke/orca_mini_v3_7B-GGML",
     'model_file': "orca_mini_v3_7b.ggmlv3.q2_K.bin",
     'model_type': "llama",
-    'gpu_layers': 50,
+    'gpu_layers': 5,
     'max_new_tokens': 30
 }
 
-participant_name = 'Them:'
-agent_name = 'Me:'
+participant_name = 'YOU'
+agent_name = 'ME'
 
 system_prompt = f"""
 Whenever you see [ {participant_name} ], that means the human has spoken. 
 Whenever you see [ {agent_name} ], that means you have spoken.
-You are trying to have a conversation with the human.
-Be very sarcastic \n
-\n
+Once you see [ {agent_name} ], you can start speaking.
+After you see [ {participant_name} ], you can stop speaking.
+ \n
 """
 
 
@@ -37,11 +65,15 @@ class Generator(Thread):
                   setattr(self, key, value)
       
       def _load_model(self):
-          self.model = AutoModelForCausalLM.from_pretrained(
-              self.model_path, 
-              model_file=self.model_file, 
-              model_type=self.model_type, 
-              gpu_layers=self.gpu_layers)
+          self.model = Llama(model_path="./models/orca-mini-3b.ggmlv3.q4_0.bin", n_ctx=512, n_batch=32, verbose=False)
+          # self.model = AutoModelForCausalLM.from_pretrained(
+          #     self.model_path, 
+          #     model_file=self.model_file, 
+          #     model_type=self.model_type, 
+          #     gpu_layers=self.gpu_layers
+          #     )
+          
+          # self.model = BetterTransformer.transform(self.model)
       
       def __init__(self, consumption_queue, stop_event=None, params=None):
           super().__init__()
@@ -76,8 +108,19 @@ class Generator(Thread):
                   return True
           
       def generate(self, prompt):
-          print('Starting generation')
-          generation_output = self.model(prompt, max_new_tokens=self.max_new_tokens , stop="Them:")
+          print('Thinking...')
+          self.publish_queue.put(random.choice(delay_fillers))
+          start_time = time.time()
+          output = self.model(prompt,
+                        temperature  = 0.7,
+                        max_tokens=80,
+                        top_k=20, 
+                        top_p=0.9,
+                        repeat_penalty=1.15,
+                        stop=participant_name)
+          generation_output = output['choices'][0]['text'].strip()
+          # generation_output = self.model(prompt, max_new_tokens=self.max_new_tokens , stop="Them:")
+          # print('Generation took', time.time() - start_time)
           return generation_output
       
       def listen_and_respond(self):
@@ -90,7 +133,7 @@ class Generator(Thread):
               # print()
               response = self.generate(prompt)
               self.running_conversation.append(f"{agent_name}: {response}")
-              print("Response:", response)
+              print("[SYSTEM]:", response)
               self.publish_queue.put(response)
           return keep_listening
   

@@ -90,7 +90,7 @@ class Transcriber(Thread):
         segments = self.transcribe_file(aggregated_audio_filename)
         segments = [s.text.strip() for s in segments]
         if segments != []:
-            print(f'[{self.seconds}]:', segments)
+            print(f'[USER]:', segments)
         self.publish_queues["transcription"].put(segments)
         self.publish_queues["merged_audio"].put(aggregated_audio_filename)
         self.purge_files(audio_filenames)

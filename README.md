@@ -18,6 +18,10 @@
     - `pip install -r requirements.txt`
 - Run the program
     - `python3 main.py`
+- Download the llm model from hugging face 
+    - repo: `TheBloke/orca_mini_3B-GGML`
+    - model file: `orca-mini-3b.ggmlv3.q4_0.bin`
+    - put it in a `models` folder within this repo
 
 
 # Desired Features
@@ -42,7 +46,6 @@
       - Could be a realistic avatar that moves its mouth when it talks (Look at meta human)
 - specialized coding llm it can call on (codellama or wizard coder)
 - Mechanism for having process intensize tasks run on a server that it calls out to
-- 
 
 
 

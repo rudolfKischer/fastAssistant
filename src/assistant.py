@@ -16,7 +16,7 @@ class Assistant():
 
     def __init__(self):
         self.stop_event = threading.Event()
-        min_time = 2
+        min_time = 2.5
 
         self.recorder = AudioRecorder(stop_event=self.stop_event, params={'seconds': min_time})
         self.transcriber = Transcriber(self.recorder.publish_queue, stop_event=self.stop_event, params={'seconds': min_time})
