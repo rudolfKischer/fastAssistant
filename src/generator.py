@@ -1,5 +1,6 @@
 from ctransformers import AutoModelForCausalLM
 from llama_cpp import Llama
+from .chatgpt import get_response
 
 import random
 
@@ -34,6 +35,7 @@ delay_fillers = [
 
 
 default_params = {
+    'local_model_path': './models/orca_mini_v3_7B-GGML/orca_mini_v3_7b.ggmlv3.q2_K.bin',
     'model_path': "TheBloke/orca_mini_v3_7B-GGML",
     'model_file': "orca_mini_v3_7b.ggmlv3.q2_K.bin",
     'model_type': "llama",
@@ -45,12 +47,12 @@ participant_name = 'YOU'
 agent_name = 'ME'
 
 system_prompt = f"""
-Whenever you see [ {participant_name} ], that means the human has spoken. 
-Whenever you see [ {agent_name} ], that means you have spoken.
-Once you see [ {agent_name} ], you can start speaking.
-After you see [ {participant_name} ], you can stop speaking.
+If it says {participant_name}: , that means the human has spoken. 
+Once you see {agent_name}:, you can start speaking.
+After you see {participant_name}, you can stop speaking."
  \n
 """
+
 
 
 
@@ -65,15 +67,14 @@ class Generator(Thread):
                   setattr(self, key, value)
       
       def _load_model(self):
-          self.model = Llama(model_path="./models/orca-mini-3b.ggmlv3.q4_0.bin", n_ctx=512, n_batch=32, verbose=False)
+          pass
+          # self.model = Llama(model_path="./models/orca-mini-3b.ggmlv3.q4_0.bin", n_ctx=512, n_batch=32, verbose=False)
           # self.model = AutoModelForCausalLM.from_pretrained(
           #     self.model_path, 
           #     model_file=self.model_file, 
           #     model_type=self.model_type, 
           #     gpu_layers=self.gpu_layers
           #     )
-          
-          # self.model = BetterTransformer.transform(self.model)
       
       def __init__(self, consumption_queue, stop_event=None, params=None):
           super().__init__()
@@ -101,16 +102,17 @@ class Generator(Thread):
                   self.last_spoken_participant = participant_name
                   for segment in segments:
                       self.running_conversation.append(f"{participant_name}: {segment}")
-                  continue
+                  return True
               
               if self.last_spoken_participant == participant_name:
                   self.last_spoken_participant = agent_name
                   return True
           
       def generate(self, prompt):
+          return get_response(prompt)
           print('Thinking...')
           self.publish_queue.put(random.choice(delay_fillers))
-          start_time = time.time()
+          # start_time = time.time()
           output = self.model(prompt,
                         temperature  = 0.7,
                         max_tokens=80,
@@ -119,7 +121,7 @@ class Generator(Thread):
                         repeat_penalty=1.15,
                         stop=participant_name)
           generation_output = output['choices'][0]['text'].strip()
-          # generation_output = self.model(prompt, max_new_tokens=self.max_new_tokens , stop="Them:")
+          # generation_output = self.model(prompt, max_new_tokens=self.max_new_tokens , stop="YOU")
           # print('Generation took', time.time() - start_time)
           return generation_output
       
