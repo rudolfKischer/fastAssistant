@@ -3,6 +3,7 @@ from gtts import gTTS
 from playsound import playsound
 from queue import Queue
 from threading import Thread, Event as ThreadEvent
+from .elevenlabs import tts as elab_tts
 
 # def play_text(text):
 #     # Convert text to audio
@@ -43,21 +44,35 @@ class Speaker(Thread):
         self.recorder_pause_event = recorder_pause_event
         self.recorder_resume_event = recorder_resume_event
 
+        self.tts_function = self.save_gtts
+
+        if self.__getattribute__('elabs'):
+            self.tts_function = elab_tts
+
         print(f"Speaker Initialized")
 
+    def save_gtts(self, text, output_file_path):
+        try:
+            tts = gTTS(text=text, lang=self.lang)
+        except Exception as e:
+            return False
+        tts.save(output_file_path)
+        return True
+    
+    def play_speach(self, input_file_path):
+        self.recorder_pause_event.set()
+        playsound(input_file_path)
+        self.recorder_resume_event.set()
+        
+    
     def speak(self, text):
         if text == None:
             return
-        try:
-            tts = gTTS(text=text, lang='en')
-        except Exception as e:
-            return
         with tempfile.NamedTemporaryFile(delete=True, suffix=".mp3") as fp:
-            tts.save(fp.name)
-            self.recorder_pause_event.set()
-            playsound(fp.name)
-            self.recorder_resume_event.set()
-    
+            if not self.tts_function(text, fp.name):
+                return
+            self.play_speach(fp.name)
+            
     def run(self):
         while not self.stop_event.is_set():
             text = self.consumption_queue.get()
