@@ -4,6 +4,7 @@ import tempfile
 from .worker import Worker
 import wavio
 import os
+from .debug import log
 
 default_params = {
     "seconds": 0.03,
@@ -11,9 +12,10 @@ default_params = {
     "majority_window": 8,
     "min_speech_frames": 5,
     "min_seconds_audio": 1,
-    "max_seconds_audio": 4,
+    "max_seconds_audio": 10,
     "pre_audio_buffer": 0.02,
     "vad_mode": 3, #0 - 3, 0: lets most things through, 3: lets few things through
+    "post_speach_window": 2.5
 }
 
 class VoiceDetector(Worker):
@@ -29,6 +31,7 @@ class VoiceDetector(Worker):
         self.chunksize = int(self.seconds * self.sample_rate)
 
         self.temp_files = []
+        self.silence_timer = 0.0
     
     def publish_buffer_audio(self):
         audio_data = self.pre_audio_buffer + self.audio_buffer
@@ -50,19 +53,28 @@ class VoiceDetector(Worker):
 
     def detect_voice(self, indata):
         is_speech = self.vad.is_speech(indata.tobytes(), self.sample_rate)
+        # print(is_speech)
         self.vad_buffer.append(is_speech)
         self.vad_buffer.pop(0)
         return self.majority_vote()
     
     def check_audio_capture(self, voice_detected):
+        if voice_detected == 1:
+            self.silence_timer = 0.0
+        
+        if voice_detected == 0:
+            self.silence_timer += self.seconds
+
+        # print(voice_detected)
         if not self.capture_audio and voice_detected == 1:
-            print("Voice Detected")
+            log("Listening...")
             self.capture_audio = True
 
-        # only end audio capture if longer than min seconds
 
-        if self.capture_audio and voice_detected == 0 and len(self.audio_buffer) > self.min_seconds_audio / self.seconds:
-            print("Voice Ended")
+        above_min_audio_threshold = len(self.audio_buffer) > self.min_seconds_audio / self.seconds
+
+        if self.capture_audio and voice_detected == 0 and above_min_audio_threshold and self.silence_timer > self.post_speach_window:
+            log("Voice Ended")
             self.capture_audio = False
             self.publish_buffer_audio()
 

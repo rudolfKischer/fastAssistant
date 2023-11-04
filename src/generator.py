@@ -1,12 +1,11 @@
-from ctransformers import AutoModelForCausalLM
-from llama_cpp import Llama
-from .chatgpt import get_response
+from .generators import generator_names
 
 import random
 
 
 from queue import Queue
 from threading import Thread, Event as ThreadEvent
+from .worker import Worker
 
 import time
 
@@ -33,106 +32,92 @@ delay_fillers = [
     "Let me reflect on that briefly..."
 ]
 
-
-default_params = {
-    'local_model_path': './models/orca_mini_v3_7B-GGML/orca_mini_v3_7b.ggmlv3.q2_K.bin',
-    'model_path': "TheBloke/orca_mini_v3_7B-GGML",
-    'model_file': "orca_mini_v3_7b.ggmlv3.q2_K.bin",
-    'model_type': "llama",
-    'gpu_layers': 5,
-    'max_new_tokens': 30
-}
-
 participant_name = 'YOU'
 agent_name = 'ME'
 
+default_params = {
+    'generator_type': 'chatgpt',
+    # 'local_model_path': './models/q4_0-orca-mini-3b.gguf',
+    'local_model_path': './models/dolphin-2.1-mistral-7b.Q2_K.gguf',
+    'max_tokens': 100,
+    'thinking_fillers': False,
+    'stop_strings': [participant_name, agent_name, '[You]'],
+    'max_context_length': 512
+}
+
 system_prompt = f"""
-If it says {participant_name}: , that means the human has spoken. 
-Once you see {agent_name}:, you can start speaking.
-After you see {participant_name}, you can stop speaking."
+### System Prompt
+The human has spoken if it says "{participant_name}:" ,  
+You can start speaking once you see "{agent_name}:", 
+Be Playful and try to make the human laugh.
+Use Emojis to express emotions.
+Dont be afraid to ask questions or to bring up interesting topics.
+Always end on a question, or something that encourages the human to speak.
+
+### Conversation
  \n
 """
 
 
+class Generator(Worker):
 
-
-class Generator(Thread):
-      
-      def _set_params(self, params):
-          for key, value in default_params.items():
-              setattr(self, key, value)
-          
-          if params:
-              for key, value in params.items():
-                  setattr(self, key, value)
-      
       def _load_model(self):
-          pass
-          # self.model = Llama(model_path="./models/orca-mini-3b.ggmlv3.q4_0.bin", n_ctx=512, n_batch=32, verbose=False)
-          # self.model = AutoModelForCausalLM.from_pretrained(
-          #     self.model_path, 
-          #     model_file=self.model_file, 
-          #     model_type=self.model_type, 
-          #     gpu_layers=self.gpu_layers
-          #     )
+          self.model = generator_names[self.generator_type](model_path=self.local_model_path)
       
       def __init__(self, consumption_queue, stop_event=None, params=None):
-          super().__init__()
-          self.consumption_queue = consumption_queue
-          self.stop_event = stop_event
-          self.publish_queue = Queue()
-          self.running_conversation = [system_prompt]
+          super().__init__(default_params, stop_event, params, consumption_queue)
+
+          # init conversation
+          self.running_conversation = []
           self.last_spoken_participant = agent_name
-          if stop_event is None:
-              self.stop_event = ThreadEvent()
-          self._set_params(params)
-          self._load_model()
+          
+          # Initialize generator
+          self.model = generator_names[self.generator_type](
+              stop_strings = self.stop_strings,
+              max_tokens = self.max_tokens,
+              model_path = self.local_model_path
+          )
           print(f"Generator Initialized")
 
       def get_conversation(self):
           return '\n'.join(self.running_conversation)
-      
-      def listening(self):
-          while True:
-              segments = self.consumption_queue.get()
-              if segments == None:
-                  return False
 
-              if segments != []:
-                  self.last_spoken_participant = participant_name
-                  for segment in segments:
-                      self.running_conversation.append(f"{participant_name}: {segment}")
-                  return True
-              
-              if self.last_spoken_participant == participant_name:
-                  self.last_spoken_participant = agent_name
-                  return True
+      def get_prompt(self):
+          conversation = self.get_conversation()
+          chars_per_token = 2.5 
+          window_size = min(int(self.max_context_length * chars_per_token), (len(conversation)))
+          context_window = conversation[-window_size:len(conversation)]
+          prompt = f'{system_prompt}\n{context_window}\n{agent_name}:'
+          return prompt
           
-      def generate(self, prompt):
-          return get_response(prompt)
+      def listening(self):
+          segments = self.consumption_queue.get()
+          if segments == None:
+              return False
+
+          if segments == []:
+              return True
+          
+          for segment in segments:
+              print(f"[USER]: {segment}")
+              self.running_conversation.append(f"{participant_name}: {segment}")
+          return True
+
+      def stall_for_time(self):
           print('Thinking...')
-          self.publish_queue.put(random.choice(delay_fillers))
-          # start_time = time.time()
-          output = self.model(prompt,
-                        temperature  = 0.7,
-                        max_tokens=80,
-                        top_k=20, 
-                        top_p=0.9,
-                        repeat_penalty=1.15,
-                        stop=participant_name)
-          generation_output = output['choices'][0]['text'].strip()
-          # generation_output = self.model(prompt, max_new_tokens=self.max_new_tokens , stop="YOU")
-          # print('Generation took', time.time() - start_time)
-          return generation_output
+          filler = random.choice(delay_fillers)
+          print(f'[SYSTEM]: {filler}')
+          self.publish_queue.put(filler)
+
+      def generate(self, prompt):
+          if self.thinking_fillers:
+              self.stall_for_time()
+          return self.model.generate(prompt)
       
       def listen_and_respond(self):
           keep_listening = self.listening()
           if keep_listening:
-              conversation = self.get_conversation()
-              prompt = f"{conversation}\n{agent_name}: "
-              # print()
-              # print("Prompt:", prompt)
-              # print()
+              prompt = self.get_prompt()
               response = self.generate(prompt)
               self.running_conversation.append(f"{agent_name}: {response}")
               print("[SYSTEM]:", response)
@@ -145,15 +130,39 @@ class Generator(Thread):
               if not keep_listening:
                   break
           self.publish_queue.put(None)
-  
-      def stop(self):
-          print(self.running_conversation())
-          self.stop_event.set()
-          self.join()
-
       
       def cleanup(self):
           self.model = None
 
+def main():
+    stop_event = ThreadEvent()
+    publish_queues = {
+            "transcription": Queue(),
+            "merged_audio": Queue()
+        }
+    generator = Generator(publish_queues["transcription"], stop_event=stop_event, params={'max_tokens': 60})
+    generator.start()
+
+    
+    # loop get input
+    while True:
+        try:
+            user_input = input()
+            publish_queues["transcription"].put([user_input])
+        except Exception:
+            break
+
+    try:
+        generator.join()
+        print("Joined Threads.")
+    except KeyboardInterrupt:
+        print("Stopping threads...")
+        stop_event.set()
+        print("Stopped.")
+
+    
+
+if __name__ == "main":
+    main()
 
         

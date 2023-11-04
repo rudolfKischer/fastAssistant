@@ -3,6 +3,7 @@ from .record import AudioRecorder
 from .transcriber import Transcriber
 from .generator import Generator
 from .speaker import Speaker
+from .vad import VoiceDetector
 
 
 class Assistant():
@@ -15,20 +16,44 @@ class Assistant():
     """    
 
     def __init__(self):
-        self.stop_event = threading.Event()
-        min_time = 2.5
+        
+        local = True
 
-        self.recorder = AudioRecorder(stop_event=self.stop_event, params={'seconds': min_time})
-        self.transcriber = Transcriber(self.recorder.publish_queue, stop_event=self.stop_event, params={'seconds': min_time})
-        self.generator = Generator(self.transcriber.publish_queues["transcription"], stop_event=self.stop_event, params={'max_new_tokens': 60})
+
+        if local:
+            elabs = False
+            generator_type = 'llamacpp'
+        else:
+            elabs = True
+            generator_type = 'chatgpt'
+        
+
+
+        self.stop_event = threading.Event()
+
+        self.recorder = AudioRecorder(stop_event=self.stop_event)#params={'seconds': min_time})
+        self.vad = VoiceDetector(self.recorder.publish_queue, stop_event=self.stop_event)
+        self.transcriber = Transcriber(self.vad.publish_queue,
+                                      stop_event=self.stop_event,
+                                      audio_pause_event=self.recorder.pause_event,
+                                      audio_resume_event=self.recorder.resume_event)
+        self.generator = Generator(self.transcriber.publish_queues["transcription"], 
+                                   stop_event=self.stop_event, 
+                                   params={
+                                       'max_tokens': 50,
+                                       'generator_type': generator_type
+                                    })
         self.speaker = Speaker(self.generator.publish_queue, 
                           recorder_pause_event=self.recorder.pause_event, 
                           recorder_resume_event=self.recorder.resume_event,
-                          stop_event=self.stop_event)
+                          stop_event=self.stop_event,
+                          params={'elabs': elabs},
+                          )
     
     def start(self):
         print("Starting threads...")
         self.recorder.start()
+        self.vad.start()
         self.transcriber.start()
         self.generator.start()
         self.speaker.start()
@@ -40,6 +65,7 @@ class Assistant():
             self.transcriber.join()
             self.generator.join()
             self.speaker.join()
+            self.vad.join()
             print("Joined Threads.")
         except KeyboardInterrupt:
             print("Stopping threads...")

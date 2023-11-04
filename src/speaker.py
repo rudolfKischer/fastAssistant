@@ -4,49 +4,27 @@ from playsound import playsound
 from queue import Queue
 from threading import Thread, Event as ThreadEvent
 from .elevenlabs import tts as elab_tts
-
-# def play_text(text):
-#     # Convert text to audio
-#     tts = gTTS(text=text, lang='en')
-
-#     # Use a temporary file to save the audio
-#     with tempfile.NamedTemporaryFile(delete=True, suffix=".mp3") as fp:
-#         tts.save(fp.name)
-#         playsound(fp.name)
-
-# play_text("Hello, this is a text to speech conversion using a temporary file.")
+from .worker import Worker
 
 default_params = {
     'lang': 'en',
+    'elabs': False
 }
 
-class Speaker(Thread):
+class Speaker(Worker):
     
-    def _set_params(self, params):
-        for key, value in default_params.items():
-            setattr(self, key, value)
-        
-        if params:
-            for key, value in params.items():
-                setattr(self, key, value)
     
     def __init__(self, consumption_queue, recorder_pause_event, recorder_resume_event, stop_event=None, params=None):
-        super().__init__()
-        self.stop_event = stop_event
-        self.consumption_queue = consumption_queue
-        self.publish_queue = Queue()
-
-        if stop_event is None:
-            self.stop_event = ThreadEvent()
+        super().__init__(default_params, stop_event, params, consumption_queue)
         
-        self._set_params(params)
-
         self.recorder_pause_event = recorder_pause_event
         self.recorder_resume_event = recorder_resume_event
 
+
+
         self.tts_function = self.save_gtts
 
-        if self.__getattribute__('elabs'):
+        if self.elabs:
             self.tts_function = elab_tts
 
         print(f"Speaker Initialized")
@@ -60,9 +38,13 @@ class Speaker(Thread):
         return True
     
     def play_speach(self, input_file_path):
-        self.recorder_pause_event.set()
-        playsound(input_file_path)
-        self.recorder_resume_event.set()
+        
+        if (self.recorder_pause_event != None):
+          self.recorder_pause_event.set()
+          playsound(input_file_path)
+          self.recorder_resume_event.set()
+        else:
+          playsound(input_file_path)
         
     
     def speak(self, text):
@@ -81,9 +63,37 @@ class Speaker(Thread):
             self.speak(text)
         self.publish_queue.put(None)
 
-    def stop(self):
-        self.stop_event.set()
-        self.join()
+def main():
+    stop_event = ThreadEvent()
+    publish_queues = {
+            "inputText": Queue()
+        }
+    elabs = True
+
+    speaker = Speaker(publish_queues["inputText"], 
+                recorder_pause_event=None, 
+                recorder_resume_event=None,
+                stop_event=stop_event,
+                params={'elabs': elabs},
+                )
+    speaker.start()
+
     
-    def cleanup(self):
-        pass
+    # loop get input
+    while True:
+        try:
+            user_input = input()
+            publish_queues["inputText"].put(user_input)
+        except Exception:
+            break
+
+    try:
+        speaker.join()
+        print("Joined Threads.")
+    except KeyboardInterrupt:
+        print("Stopping threads...")
+        stop_event.set()
+        print("Stopped.")
+
+if __name__ == "__main__":
+    main()

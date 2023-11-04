@@ -5,7 +5,8 @@ from .config import ELAB_API_KEY
 CHUNK_SIZE = 1024
 base_url = "https://api.elevenlabs.io/"
 
-default_voice_id = "21m00Tcm4TlvDq8ikWAM"
+# default_voice_id = "21m00Tcm4TlvDq8ikWAM"
+default_voice_id = "EXAVITQu4vr4xnSDxMaL"
 
 
 def elab_request(endpoint, data=None, headers=None, query_params=None):
