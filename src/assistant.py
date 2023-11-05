@@ -17,7 +17,7 @@ class Assistant():
 
     def __init__(self):
         
-        local = True
+        local = False
 
 
         if local:

@@ -6,6 +6,8 @@ import random
 from queue import Queue
 from threading import Thread, Event as ThreadEvent
 from .worker import Worker
+from .speaker import Speaker
+from huggingface_hub import hf_hub_url, cached_download
 
 import time
 
@@ -36,10 +38,15 @@ participant_name = 'YOU'
 agent_name = 'ME'
 
 default_params = {
-    'generator_type': 'chatgpt',
+    # 'generator_type': 'chatgpt',
+    'generator_type': 'llamacpp',
     # 'local_model_path': './models/q4_0-orca-mini-3b.gguf',
-    'local_model_path': './models/dolphin-2.1-mistral-7b.Q2_K.gguf',
-    'max_tokens': 100,
+    # 'local_model_path': './models/dolphin-2.1-mistral-7b.Q2_K.gguf',
+    # 'local_model_path': './models/Marx-3B-V2-Q4_1-GGUF.gguf',
+    'local_model_path': './models/luna-ai-llama2-uncensored.Q2_K.gguf',
+    # 'local_model_path': './models/q5_k_m-sheared-llama-2.7b.gguf',
+    # 'local_model_path': './models/tinyllama-1.1b-chat-v0.3.Q2_K.gguf',
+    'max_tokens': 200,
     'thinking_fillers': False,
     'stop_strings': [participant_name, agent_name, '[You]'],
     'max_context_length': 512
@@ -50,7 +57,7 @@ system_prompt = f"""
 The human has spoken if it says "{participant_name}:" ,  
 You can start speaking once you see "{agent_name}:", 
 Be Playful and try to make the human laugh.
-Use Emojis to express emotions.
+Insert natural pauses with "..." or "," or "uhh" or "umm". 
 Dont be afraid to ask questions or to bring up interesting topics.
 Always end on a question, or something that encourages the human to speak.
 
@@ -140,8 +147,26 @@ def main():
             "transcription": Queue(),
             "merged_audio": Queue()
         }
-    generator = Generator(publish_queues["transcription"], stop_event=stop_event, params={'max_tokens': 60})
+    generator = Generator(publish_queues["transcription"], 
+                          stop_event=stop_event, 
+                          params={
+                              'local_model_path': './models/luna-ai-llama2-uncensored.Q2_K.gguf',
+                              'generator_type': 'chatgpt',
+                              'max_tokens': 100
+                          })
     generator.start()
+
+    elabs = True
+    speaker = Speaker(generator.publish_queue,
+            recorder_pause_event=None, 
+            recorder_resume_event=None,
+            stop_event=stop_event,
+            params={'elabs': elabs},
+            )
+    
+    speaker_on = True
+    if speaker_on:
+      speaker.start()
 
     
     # loop get input
