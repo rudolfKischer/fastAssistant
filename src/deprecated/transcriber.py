@@ -6,7 +6,9 @@ from queue import Queue
 from threading import Thread, Event as ThreadEvent
 from os import remove as os_remove, path as os_path
 from faster_whisper import WhisperModel
-from .debug import log, log1
+from ..debug import log, log1
+
+
 
 default_params = {
     'model_size': "tiny",

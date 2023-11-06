@@ -1,9 +1,10 @@
 import threading
-from .record import AudioRecorder
-from .transcriber import Transcriber
+from .SpeachToText import SpeachToText
+from .TextToSpeach import TextToSpeach
 from .generator import Generator
 from .speaker import Speaker
-from .vad import VoiceDetector
+
+from .config import LOCAL_ONLY
 
 
 class Assistant():
@@ -17,55 +18,51 @@ class Assistant():
 
     def __init__(self):
         
-        local = False
-
+        local = LOCAL_ONLY
 
         if local:
             elabs = False
-            generator_type = 'llamacpp'
+            # generator_type = 'llamacpp'
+            generator_type = 'chatgpt'
+            speach_speed = 1.38
         else:
             elabs = True
             generator_type = 'chatgpt'
+            speach_speed = 1.0
         
 
 
         self.stop_event = threading.Event()
-
-        self.recorder = AudioRecorder(stop_event=self.stop_event)#params={'seconds': min_time})
-        self.vad = VoiceDetector(self.recorder.publish_queue, stop_event=self.stop_event)
-        self.transcriber = Transcriber(self.vad.publish_queue,
-                                      stop_event=self.stop_event,
-                                      audio_pause_event=self.recorder.pause_event,
-                                      audio_resume_event=self.recorder.resume_event)
-        self.generator = Generator(self.transcriber.publish_queues["transcription"], 
-                                   stop_event=self.stop_event, 
-                                   params={
-                                       'max_tokens': 50,
-                                       'generator_type': generator_type
-                                    })
-        self.speaker = Speaker(self.generator.publish_queue, 
-                          recorder_pause_event=self.recorder.pause_event, 
-                          recorder_resume_event=self.recorder.resume_event,
+        speachToText = SpeachToText(stop_event=self.stop_event)
+        generator = Generator(speachToText.publish_queue,
                           stop_event=self.stop_event,
-                          params={'elabs': elabs},
-                          )
+                          params={
+                              'generator_type': generator_type,
+                              'max_tokens': 150
+                          })
+        tts = TextToSpeach(generator.publish_queue,
+                    stop_event=self.stop_event,
+                    params={'elabs': elabs})
+        speaker = Speaker(tts.publish_queue,
+                    recorder_pause_event=speachToText.recorder.paused_event,
+                    recorder_resume_event=speachToText.recorder.resume_event,
+                    stop_event=self.stop_event,
+                    params={'speed': speach_speed}
+                    )
+        self.threads = [speachToText, generator, tts, speaker]
     
     def start(self):
         print("Starting threads...")
-        self.recorder.start()
-        self.vad.start()
-        self.transcriber.start()
-        self.generator.start()
-        self.speaker.start()
+        for thread in self.threads:
+            thread.start()
         print("Started.")
+        # clear console
+        print("\033c", end="")
 
     def join(self):
         try:
-            self.recorder.join()
-            self.transcriber.join()
-            self.generator.join()
-            self.speaker.join()
-            self.vad.join()
+            for thread in self.threads:
+                thread.join()
             print("Joined Threads.")
         except KeyboardInterrupt:
             print("Stopping threads...")

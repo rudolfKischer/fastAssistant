@@ -1,10 +1,10 @@
 import numpy as np
 import webrtcvad
 import tempfile
-from .worker import Worker
+from ..worker import Worker
 import wavio
 import os
-from .debug import log
+from ..debug import log
 
 default_params = {
     "seconds": 0.03,
@@ -116,64 +116,3 @@ class VoiceDetector(Worker):
         for filename in self.temp_files:
             if os.path.exists(filename):
                 os.remove(filename)
-
-
-
-# # Constants
-# RATE = 16000
-# FRAME_DURATION = 0.03  # 30ms
-# FRAME_SIZE = int(RATE * FRAME_DURATION)
-# MAJORITY_WINDOW = 10  # Number of frames for majority voting
-# MIN_SPEECH_FRAMES = 4  # Minimum consecutive frames to consider as speech
-
-# # Initialize VAD with the most aggressive mode
-# vad = webrtcvad.Vad(3)
-
-# # Buffer to store VAD results and audio data
-# vad_buffer = [0] * MAJORITY_WINDOW
-# audio_buffer = []
-
-# # Audio callback
-# def audio_callback(indata, frames, time, status):
-#     is_speech = vad.is_speech(indata.tobytes(), RATE)
-#     vad_buffer.append(is_speech)
-#     vad_buffer.pop(0)
-
-#     # Majority voting
-#     majority_decision = 1 if sum(vad_buffer) > len(vad_buffer) / 2 else 0
-
-#     # Minimum speech length thresholding
-#     if majority_decision == 1:
-#         audio_buffer.append(majority_decision)
-#         if len(audio_buffer) < MIN_SPEECH_FRAMES:
-#             majority_decision = 0
-#     else:
-#         audio_buffer.clear()
-
-#     vad_buffer[0] = majority_decision
-
-# # Setting up the figure, the axis, and the plot elements
-# fig, ax = plt.subplots()
-# x = np.arange(0, 10, FRAME_DURATION)
-# y = np.zeros_like(x)
-# line, = ax.plot(x, y, '-o', color='blue')
-# ax.set_ylim(0, 1.1)
-# ax.set_title('VAD Output (1: Speech, 0: No speech)')
-
-# def init():
-#     line.set_ydata(np.ma.array(x, mask=True))
-#     return line,
-
-# def update(num):
-#     y[:-1] = y[1:]
-#     y[-1] = vad_buffer[0]
-#     line.set_ydata(y)
-#     return line,
-
-# ani = FuncAnimation(fig, update, frames=None, init_func=init, blit=True, interval=FRAME_DURATION*1000)
-
-# # Start audio stream
-# stream = sd.InputStream(callback=audio_callback, samplerate=RATE, channels=1, dtype=np.int16, blocksize=FRAME_SIZE)
-# with stream:
-#     plt.show()
-

@@ -2,68 +2,43 @@ from .generators import generator_names
 
 import random
 
-
 from queue import Queue
-from threading import Thread, Event as ThreadEvent
+from threading import Event as ThreadEvent
 from .worker import Worker
 from .speaker import Speaker
 from huggingface_hub import hf_hub_url, cached_download
+from .utils import split_into_sentences, delay_fillers
+from threading import Timer
+from .config import (
+    PARTICPANT_NAME,
+    AGENT_NAME,
+    SYSTEM_PROMPT,
+    DEFAULT_MODEL_PATH,
+    ice_breakers
 
-import time
 
-delay_fillers = [
-    "Hmm, give me a moment...",
-    "Let me think on that for a sec...",
-    "Ah, let's see here...",
-    "Interesting, let me ponder that...",
-    "Hold on, thinking...",
-    "Hmm, let me gather my thoughts...",
-    "Bear with me a moment...",
-    "Just a bit... I'm sorting it out.",
-    "Hmm, need a second to process that...",
-    "Oh? Let me mull over that...",
-    "I see... give me a short pause...",
-    "Hold that thought...",
-    "Let me dive into that for a moment...",
-    "Ah, let me sift through my thoughts...",
-    "Just piecing it together...",
-    "Hmm, let it marinate for a second...",
-    "Hold on, it's coming to me...",
-    "I'm drawing it up, just a sec...",
-    "Almost there, give me a moment...",
-    "Let me reflect on that briefly..."
-]
+)
 
-participant_name = 'YOU'
-agent_name = 'ME'
+
+participant_name = PARTICPANT_NAME
+agent_name = AGENT_NAME
 
 default_params = {
     # 'generator_type': 'chatgpt',
     'generator_type': 'llamacpp',
-    # 'local_model_path': './models/q4_0-orca-mini-3b.gguf',
-    # 'local_model_path': './models/dolphin-2.1-mistral-7b.Q2_K.gguf',
-    # 'local_model_path': './models/Marx-3B-V2-Q4_1-GGUF.gguf',
-    'local_model_path': './models/luna-ai-llama2-uncensored.Q2_K.gguf',
-    # 'local_model_path': './models/q5_k_m-sheared-llama-2.7b.gguf',
-    # 'local_model_path': './models/tinyllama-1.1b-chat-v0.3.Q2_K.gguf',
+    'local_model_path': DEFAULT_MODEL_PATH,
     'max_tokens': 200,
     'thinking_fillers': False,
     'stop_strings': [participant_name, agent_name, '[You]'],
-    'max_context_length': 512
+    'max_context_length': 512,
+    'segment_response': True,
+    'self_intro': False,
+    'idle_responses': True,
+    'idle_response_interval': [35, 150],
+
 }
 
-system_prompt = f"""
-### System Prompt
-The human has spoken if it says "{participant_name}:" ,  
-You can start speaking once you see "{agent_name}:", 
-Be Playful and try to make the human laugh.
-Insert natural pauses with "..." or "," or "uhh" or "umm". 
-Dont be afraid to ask questions or to bring up interesting topics.
-Always end on a question, or something that encourages the human to speak.
-
-### Conversation
- \n
-"""
+system_prompt = SYSTEM_PROMPT
 
 
 class Generator(Worker):
@@ -86,6 +61,33 @@ class Generator(Worker):
           )
           print(f"Generator Initialized")
 
+          self.idle_response_timer = None
+      
+      def initiate_conversation(self):
+          # ice breakers should be prompts that allow the llm to figure out what to do
+          ice_breaker = random.choice(ice_breakers)
+          self.running_conversation.append(ice_breaker)
+          prompt = self.get_prompt()
+          response = self.generate(prompt)
+          self.running_conversation.append(f"{agent_name}: {response}")
+          if self.segment_response:
+              response = self.segment_text(response)
+          else:
+              response = [response]
+          for segment in response:
+              self.publish_queue.put(segment)
+          
+          self.reset_idle_response_timer()
+
+          
+          
+
+      def reset_idle_response_timer(self):
+          if self.idle_response_timer is not None:
+              self.idle_response_timer.cancel()
+          self.idle_response_timer = Timer(random.randint(*self.idle_response_interval), self.initiate_conversation)
+          self.idle_response_timer.start()
+              
       def get_conversation(self):
           return '\n'.join(self.running_conversation)
 
@@ -101,12 +103,15 @@ class Generator(Worker):
           segments = self.consumption_queue.get()
           if segments == None:
               return False
+          
+
+          self.reset_idle_response_timer()
 
           if segments == []:
               return True
           
           for segment in segments:
-              print(f"[USER]: {segment}")
+              print(f"[{participant_name}]: {segment}")
               self.running_conversation.append(f"{participant_name}: {segment}")
           return True
 
@@ -121,17 +126,28 @@ class Generator(Worker):
               self.stall_for_time()
           return self.model.generate(prompt)
       
+      def segment_text(self, text):
+          return split_into_sentences(text)
+          
+      
       def listen_and_respond(self):
           keep_listening = self.listening()
           if keep_listening:
               prompt = self.get_prompt()
               response = self.generate(prompt)
               self.running_conversation.append(f"{agent_name}: {response}")
-              print("[SYSTEM]:", response)
-              self.publish_queue.put(response)
+              # print(f"[{agent_name}]:", response)
+              if self.segment_response:
+                  response = self.segment_text(response)
+              else:
+                  response = [response]
+              for segment in response:
+                  self.publish_queue.put(segment)
+
           return keep_listening
   
       def run(self):
+          self.reset_idle_response_timer()
           while not self.stop_event.is_set():
               keep_listening = self.listen_and_respond()
               if not keep_listening:
@@ -150,7 +166,7 @@ def main():
     generator = Generator(publish_queues["transcription"], 
                           stop_event=stop_event, 
                           params={
-                              'local_model_path': './models/luna-ai-llama2-uncensored.Q2_K.gguf',
+                              'local_model_path': DEFAULT_MODEL_PATH,
                               'generator_type': 'chatgpt',
                               'max_tokens': 100
                           })
@@ -164,7 +180,7 @@ def main():
             params={'elabs': elabs},
             )
     
-    speaker_on = True
+    speaker_on = False
     if speaker_on:
       speaker.start()
 
