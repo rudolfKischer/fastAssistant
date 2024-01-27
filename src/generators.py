@@ -25,7 +25,7 @@ class ChatGPTGenerator(Generator):
     default_params = {
         "model": "gpt-3.5-turbo-instruct",
         "temperature": 0.9,
-        "max_tokens": 150,
+        "max_tokens": 200,
         "top_p": 1,
         "frequency_penalty": 0,
         "presence_penalty": 0,
@@ -56,18 +56,22 @@ class ChatGPTGenerator(Generator):
 class LlamaCPPGenerator(Generator):
     
     default_params = {
-        "model_path": "./models/q4_0-orca-mini-3b.gguf",
-        "n_gpu_layers": 100,
+        # "model_path": "./models/q4_0-orca-mini-3b.gguf",
+        "model_path": "./models/starling-lm-7b-alpha.Q3_K_S.gguf",
+        "n_gpu_layers": 99,
         "stop_strings": ['\n'],
-        "max_context_length": 512
+        "max_context_length": 512,
     }
 
     def __init__(self, **kwargs) -> None:
         super().__init__()
         self.set_params(kwargs, self.default_params)
+        print(f"Loading {self.model_path}")
         self.llm = Llama(model_path=self.model_path,
                          n_gpu_layers=self.n_gpu_layers,
                          verbose=False,
+                         use_mlock=True,
+                         n_threads=4,
                          n_ctx=self.max_context_length)
     
     def generate(self, prompt):

@@ -18,16 +18,22 @@ default_params = {
 class Speaker(Worker):
     
     
-    def __init__(self, consumption_queue, recorder_pause_event, recorder_resume_event, stop_event=None, params=None):
+    def __init__(self, consumption_queue, 
+                 recorder_pause_event, 
+                 recorder_resume_event, 
+                 stop_event=None, params=None):
         super().__init__(default_params, stop_event, params, consumption_queue)
         self.recorder_pause_event = recorder_pause_event
         self.recorder_resume_event = recorder_resume_event
 
         print(f"Speaker Initialized")
+
+        self.clear_speach_event = ThreadEvent()
     
     
     def play_speach(self, input_file_path):
         playsound(input_file_path)
+
     
     def speak(self, speach_file_path):
         # print('Received speach file', speach_file_path)

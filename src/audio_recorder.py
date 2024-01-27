@@ -124,8 +124,8 @@ class MyQueue(multiprocessing.queues.Queue):
         """ Reliable implementation of multiprocessing.Queue.empty() """
         return not self.qsize()
 
-INIT_MODEL_TRANSCRIPTION = "tiny"
-INIT_MODEL_TRANSCRIPTION_REALTIME = "tiny"
+INIT_MODEL_TRANSCRIPTION = "base"
+INIT_MODEL_TRANSCRIPTION_REALTIME = "base"
 INIT_REALTIME_PROCESSING_PAUSE = 0.2
 INIT_SILERO_SENSITIVITY = 0.4
 INIT_WEBRTC_SENSITIVITY = 3

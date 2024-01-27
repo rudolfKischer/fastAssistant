@@ -56,10 +56,14 @@ class TextToSpeach(Worker):
     def create_speach(self, text):
         if text == None:
             return None
-        if len(text) == 0:
+        if len(text) == 0 or text == "" or text == " " or text == "\n":
             return None
         
-        log(f"[{AGENT_NAME}]: {text}")
+        ansi_orange = "\033[94m"
+        reset = "\033[0m"
+        
+        
+        log(f"{ansi_orange}[{AGENT_NAME}]{reset}: {text}")
         _, temp_file_path = tempfile.mkstemp(suffix='.wav')
         
         # with silence_stdout():

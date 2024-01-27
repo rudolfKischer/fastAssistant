@@ -28,10 +28,12 @@ def elab_request(endpoint, data=None, headers=None, query_params=None):
 def tts_request(text, voice_id=default_voice_id, audio_format="audio/mpeg"):
       data = {
         "text": text,
-        "model_id": "eleven_monolingual_v1",
+        # "model_id": "eleven_monolingual_v1",
+        # "model_id": "eleven_multilingual_v2",
+        "model_id": "eleven_turbo_v2",
         "voice_settings": {
-          "stability": 0.5,
-          "similarity_boost": 0.5
+          "stability": 0.9,
+          "similarity_boost": 0.9
         }
       }
       query_params = {

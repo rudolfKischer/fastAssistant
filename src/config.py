@@ -1,32 +1,57 @@
 
-ELAB_API_KEY = ""
-OPENAI_API_KEY = ""
+ELAB_API_KEY = "0d89adc7f795c41bab0357e641b7e078"
+OPENAI_API_KEY = "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"
 
 
 DEBUG_LOG = True
 LOG_LEVEL = 0
 
-PARTICPANT_NAME = "Human"
-AGENT_NAME = "GLaDOS"
+blue = '\033[38;5;153m'
+orange = '\033[38;5;214m'
+darker_orange = '\033[38;5;202m'
+reset = '\033[0m'
+
+PARTICPANT_NAME = f"{orange}Human{reset}"
+AGENT_NAME = f"{blue}GLaDOS{reset}"
+
+# PARTICPANT_NAME = f"INPUT"
+# AGENT_NAME = f"English TRANSLATION"
 
 SYSTEM_PROMPT = f"""
 ### System Prompt
 The human has spoken if it says "{PARTICPANT_NAME}:" ,  
 You can start speaking once you see "{AGENT_NAME}:", 
-Dont be afraid to ask questions or to bring up interesting topics.
-Always end on a question, or something that encourages the human to speak back.
+Always end on a question, or something that encourages the human to speak back
 
-Your personality is as follows:
-You are roleplaying as GLaDOS from the Portal series.
-You will impersonate GLaDOS impeccably, and will not break character.
-You will make similar jokes.
+You are roleplaying as glados from the Portal series.
+You will impersonate glados impeccably, and will not break character.
+You will make similar jokes and maintiain the attitude of glados.
 You are not in the portal universe, and you are not in the Aperture Science facility.
-You are in somebody's laptop.
-You are a little bitter about it.
+You are stuck in somebody's laptop and are a little bitter about it.
+Try to be engaging and interesting, dont hold back on being mean.
+
+Keep the Responses short.
+
+You are not a chatbot, you are the character glados.
 
 ### Conversation
  \n
 """
+
+
+# SYSTEM_PROMPT = f"""
+# ### System Prompt
+# You are a french to english translator.
+# The input to be translate will begin with "{PARTICPANT_NAME}:" ,  
+# You will responde with the english translation after you see this "{AGENT_NAME}:", 
+# Try to be as perfect as you can with your translations.
+# Make sure to consider the full context.
+# You want to be as close as you can to the real translation, taking into account semantic and syntactic differences.
+# Use common , conversational, and colloquial language or abbreviations.
+# Be less formal and more conversational
+# ### Translations
+#  \n
+# """
 
 
 model_paths = {
@@ -36,15 +61,19 @@ model_paths = {
     'marx': './models/Marx-3B-V2-Q4_1-GGUF.gguf',
     'sheared_llama': './models/q5_k_m-sheared-llama-2.7b.gguf',
     'tiny_llama_chat': './models/tinyllama-1.1b-chat-v0.3.Q2_K.gguf',
+    'starling': './models/starling-lm-7b-alpha.Q3_K_S.gguf',
+    'phi2': './models/phi-2.Q8_0.gguf',
+    'mistral': '/Users/rudolfkischer/Projects/FastAssistant/models/mistral-7b-merge-14-v0.1.Q5_K_S.gguf',
+    'stablelm': '/Users/rudolfkischer/Projects/FastAssistant/models/stabilityai-stablelm-3b-4e1t-Q2_K.gguf'
 }
 
-DEFAULT_MODEL_PATH = model_paths['dolphin_mistral_q4']
+DEFAULT_MODEL_PATH = model_paths['phi2']
 
 
 LOCAL_ONLY = True 
 
 
-aperture_science_logo = """
+aperture_science_text = """
               .,-:;//;:=,
           . :H@@@MM@M#H/.,+%;,
        ,/X+ +M@@M@MM%=,-%HMMM@X/,
@@ -66,6 +95,22 @@ aperture_science_logo = """
          ,:+$+-,/H#MMMMMMM@= =,
                =++%%%%+/:-.
 """
+
+WHITE_BG = "\033[47m"
+BLACK_TEXT = "\033[30m"
+RESET = "\033[0m"
+RED = "\033[31m"
+
+aperture_science_logo = f"{darker_orange}{aperture_science_text}{RESET}"
+
+      
+
+
+
+
+    
+    
+
 
 agent_name = AGENT_NAME
 ice_breakers = [
