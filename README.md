@@ -1,7 +1,6 @@
 # Fast Assistant
 
 - This is a simple conversational bot that you can chat with
-- Ironically, it is not very fast right now
 
 # Plan
 
@@ -24,7 +23,7 @@
     - put it in a `models` folder within this repo
 
 
-# Desired Features
+# Planned Features
 
 - Faster Text Generation time
 - Inference optimization on with vllm
