@@ -1,74 +1,82 @@
 import tempfile
-from gtts import gTTS
 from playsound import playsound
 from queue import Queue
-from threading import Thread, Event as ThreadEvent
+from threading import Event as ThreadEvent
+from .worker import Worker
 
-# def play_text(text):
-#     # Convert text to audio
-#     tts = gTTS(text=text, lang='en')
+from pydub import AudioSegment
+from pydub.effects import speedup
 
-#     # Use a temporary file to save the audio
-#     with tempfile.NamedTemporaryFile(delete=True, suffix=".mp3") as fp:
-#         tts.save(fp.name)
-#         playsound(fp.name)
+import os
 
-# play_text("Hello, this is a text to speech conversion using a temporary file.")
 
 default_params = {
     'lang': 'en',
+    'speed': 1.3
 }
 
-class Speaker(Thread):
+class Speaker(Worker):
     
-    def _set_params(self, params):
-        for key, value in default_params.items():
-            setattr(self, key, value)
-        
-        if params:
-            for key, value in params.items():
-                setattr(self, key, value)
     
-    def __init__(self, consumption_queue, recorder_pause_event, recorder_resume_event, stop_event=None, params=None):
-        super().__init__()
-        self.stop_event = stop_event
-        self.consumption_queue = consumption_queue
-        self.publish_queue = Queue()
-
-        if stop_event is None:
-            self.stop_event = ThreadEvent()
-        
-        self._set_params(params)
-
+    def __init__(self, consumption_queue, 
+                 recorder_pause_event, 
+                 recorder_resume_event, 
+                 stop_event=None, params=None):
+        super().__init__(default_params, stop_event, params, consumption_queue)
         self.recorder_pause_event = recorder_pause_event
         self.recorder_resume_event = recorder_resume_event
 
         print(f"Speaker Initialized")
 
-    def speak(self, text):
-        if text == None:
+        self.clear_speach_event = ThreadEvent()
+    
+    
+    def play_speach(self, input_file_path):
+        playsound(input_file_path)
+
+    
+    def speak(self, speach_file_path):
+        # print('Received speach file', speach_file_path)
+        if speach_file_path == None:
             return
         try:
-            tts = gTTS(text=text, lang='en')
+            
+            # delete file
+            if os.path.exists(speach_file_path):
+                self.play_speach(speach_file_path)
+                os.remove(speach_file_path)
         except Exception as e:
+            print("Error playing speach file")
+            print(e)
             return
-        with tempfile.NamedTemporaryFile(delete=True, suffix=".mp3") as fp:
-            tts.save(fp.name)
-            self.recorder_pause_event.set()
-            playsound(fp.name)
-            self.recorder_resume_event.set()
-    
+            
     def run(self):
         while not self.stop_event.is_set():
-            text = self.consumption_queue.get()
-            if text == None:
+            speach_file = self.consumption_queue.get()
+            if speach_file == None:
                 break
-            self.speak(text)
+            self.recorder_pause_event.set()
+            self.speak(speach_file)
+            # if the qeue is empty, we resume the recorder
+            if self.consumption_queue.empty():
+                self.recorder_resume_event.set()
         self.publish_queue.put(None)
 
-    def stop(self):
-        self.stop_event.set()
-        self.join()
-    
-    def cleanup(self):
-        pass
+def main():
+    stop_event = ThreadEvent()
+    publish_queues = {
+            "inputFiles": Queue()
+        }
+
+    speaker = Speaker(publish_queues["inputFiles"],
+                recorder_pause_event=None, 
+                recorder_resume_event=None,
+                stop_event=stop_event,
+                )
+    speaker.start()
+
+    test_file = "./test.wav"
+    publish_queues["inputFiles"].put(test_file)
+
+if __name__ == "__main__":
+    main()

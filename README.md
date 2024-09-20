@@ -47,4 +47,7 @@
 - Mechanism for having process intensize tasks run on a server that it calls out to
 
 
+# NOTES:
 
+- Check the microphone input system settings:
+- If its to sensitive, it the system might think your always talking which makes it behave weirdly
