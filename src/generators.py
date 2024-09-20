@@ -23,7 +23,7 @@ class Generator():
 
 class ChatGPTGenerator(Generator):
     default_params = {
-        "model": "gpt-3.5-turbo-instruct",
+        "model": "gpt-4o-mini",
         "temperature": 0.9,
         "max_tokens": 200,
         "top_p": 1,
@@ -37,18 +37,18 @@ class ChatGPTGenerator(Generator):
         self.set_params(kwargs, self.default_params)
     
     def generate(self, prompt):
-        openai.Completion.create
-        response = openai.Completion.create(
-            model=self.model,
-            prompt=prompt,
-            temperature=self.temperature,
-            max_tokens=self.max_tokens,
-            top_p=self.top_p,
-            frequency_penalty=self.frequency_penalty,
-            presence_penalty=self.presence_penalty,
-            stop=self.stop_strings
-        )
-        return response.choices[0].text.strip()
+      response = openai.ChatCompletion.create(
+          model=self.model,
+          messages=[
+              {"role": "user", "content": prompt}
+          ],
+          temperature=self.temperature,
+          max_tokens=self.max_tokens,
+          top_p=self.top_p,
+          frequency_penalty=self.frequency_penalty,
+          presence_penalty=self.presence_penalty
+      )
+      return response.choices[0].message['content'].strip()
     
 
 

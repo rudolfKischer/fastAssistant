@@ -67,7 +67,6 @@ def main():
     publish_queues = {
             "inputFiles": Queue()
         }
-    elabs = False
 
     speaker = Speaker(publish_queues["inputFiles"],
                 recorder_pause_event=None, 

@@ -1,6 +1,7 @@
 from .generators import generator_names
 
 import random
+import numpy as np
 
 from queue import Queue
 from threading import Event as ThreadEvent
@@ -12,7 +13,9 @@ from threading import Timer
 from os import system, name
 from .config import (
     PARTICPANT_NAME,
+    PARTICIPANT_COLOR,
     AGENT_NAME,
+    AGENT_COLOR,
     SYSTEM_PROMPT,
     DEFAULT_MODEL_PATH,
     ice_breakers,
@@ -38,7 +41,7 @@ default_params = {
     'segment_response': True,
     'self_intro': False,
     'idle_responses': True,
-    'idle_response_interval': [55, 70],
+    'idle_response_interval': [1 * 60, 5 * 60],
 
 }
 
@@ -51,6 +54,7 @@ class Generator(Worker):
           self.model = generator_names[self.generator_type](model_path=self.local_model_path)
       
       def __init__(self, consumption_queue, stop_event=None, params=None):
+
           super().__init__(default_params, stop_event, params, consumption_queue)
 
           # init conversation
@@ -82,8 +86,9 @@ class Generator(Worker):
 
           # clear screen and print conversation
           # clear console with os
-          system('clear' if name == 'posix' else 'cls')
+          # system('clear' if name == 'posix' else 'cls')
           print(f'\033[33m{aperture_science_logo}\033[0m', end="", flush=True)
+          print(f'\033[33m{aperture_science_logo}\033[0m', end="", flush=False)
           # print the last n lines of the conversation
           # except for the last line which is from th agent
           ansi_orange = "\033[33m"
@@ -92,10 +97,9 @@ class Generator(Worker):
 
           for line in self.running_conversation[-10:-1]:
               # replace agent name with blue and participant name with orange
-              line_colored = line.replace(f'[{agent_name}]', f'{ansi_light_blue}[{agent_name}]{RESET}')
-              line_colored = line_colored.replace(f'[{participant_name}]', f'{ansi_orange}[{participant_name}]{RESET}')
+              line_colored = line.replace(f'[{agent_name}]', f'{AGENT_COLOR}[{agent_name}]{RESET}')
+              line_colored = line_colored.replace(f'[{participant_name}]', f'{PARTICIPANT_COLOR}[{participant_name}]{RESET}')
               print(line_colored)
-          
           for segment in response:
               self.publish_queue.put(segment)
           
@@ -114,7 +118,11 @@ class Generator(Worker):
       def reset_idle_response_timer(self):
           if self.idle_response_timer is not None:
               self.idle_response_timer.cancel()
-          self.idle_response_timer = Timer(random.randint(*self.idle_response_interval), self.initiate_conversation)
+          # self.idle_response_timer = Timer(random.randint(*self.idle_response_interval), self.initiate_conversation)
+          start_time = self.idle_response_interval[0]
+          end_time = self.idle_response_interval[1]
+          center = (start_time + end_time) / 2
+          self.idle_response_timer = Timer(int(np.random.normal(center, (end_time - start_time) / 2)), self.initiate_conversation)
           self.idle_response_timer.start()
               
       def get_conversation(self):
@@ -158,11 +166,16 @@ class Generator(Worker):
       def generate(self, prompt):
           if self.thinking_fillers:
               self.stall_for_time()
+          
           try:
+              
               response = self.model.generate(prompt)
+              print(response)
+
+
           except Exception as e:
               print(e)
-              response = 'I am having trouble understanding you. Could you rephrase that?'
+              response = 'I am having trouble understanding you. Could you rephrase that?' + str(e)
           return response
       
       def segment_text(self, text):
@@ -202,12 +215,12 @@ def main():
                           })
     generator.start()
 
-    elabs = True
+    tts_mode = 'elabs'
     speaker = Speaker(generator.publish_queue,
             recorder_pause_event=None, 
             recorder_resume_event=None,
             stop_event=stop_event,
-            params={'elabs': elabs},
+            params={'tt_mode': tts_mode}
             )
     
     speaker_on = False

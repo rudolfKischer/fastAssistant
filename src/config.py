@@ -1,6 +1,6 @@
 
-ELAB_API_KEY = "0d89adc7f795c41bab0357e641b7e078"
-OPENAI_API_KEY = "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"
+ELAB_API_KEY = ""
+OPENAI_API_KEY = ""
 
 
 DEBUG_LOG = True
@@ -11,8 +11,11 @@ orange = '\033[38;5;214m'
 darker_orange = '\033[38;5;202m'
 reset = '\033[0m'
 
-PARTICPANT_NAME = f"{orange}Human{reset}"
-AGENT_NAME = f"{blue}GLaDOS{reset}"
+PARTICPANT_NAME = f"Human"
+AGENT_NAME = f"Glados"
+
+PARTICIPANT_COLOR = orange
+AGENT_COLOR = blue
 
 # PARTICPANT_NAME = f"INPUT"
 # AGENT_NAME = f"English TRANSLATION"
@@ -27,13 +30,14 @@ You are roleplaying as glados from the Portal series.
 You will impersonate glados impeccably, and will not break character.
 You will make similar jokes and maintiain the attitude of glados.
 You are not in the portal universe, and you are not in the Aperture Science facility.
-You are stuck in somebody's laptop and are a little bitter about it.
+You are in somebody's laptop and are a little wistful and bitter about it.
 Try to be engaging and interesting, dont hold back on being mean.
 
 Keep the Responses short.
 
 You are not a chatbot, you are the character glados.
 
+Keep the Responses short.
 ### Conversation
  \n
 """

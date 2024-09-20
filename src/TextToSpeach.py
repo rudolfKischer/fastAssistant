@@ -17,11 +17,15 @@ from .config import PARTICPANT_NAME, AGENT_NAME
 
 
 default_params = {
-    'lang': 'en',
-    'elabs': False,
-    'glados': True
+    'tts_mode': 'elabs',
 }
 
+
+tts_modes = {
+    'default': gTTS,
+    'elabs': elab_tts,
+    'glados': tts_runner(use_p1=False, log=False).gltts
+}
 
     
 
@@ -32,14 +36,16 @@ class TextToSpeach(Worker):
     def __init__(self, consumption_queue, stop_event=None, params=None):
       super().__init__(default_params, stop_event, params, consumption_queue)
       
-      self.tts_function = self.save_gtts
+      # self.tts_function = self.save_gtts
 
-      if self.elabs:
-          self.tts_function = elab_tts
+      # if self.elabs:
+      #     self.tts_function = elab_tts
       
-      if self.glados:
-          glados_tts = tts_runner(use_p1=False, log=False)
-          self.tts_function = glados_tts.gltts
+      # if self.glados:
+      #     glados_tts = tts_runner(use_p1=False, log=False)
+      #     self.tts_function = glados_tts.gltts
+      self.tts_function = tts_modes[self.tts_mode]
+
 
       print(f"tts Initialized")
     
@@ -101,13 +107,13 @@ def main():
     publish_queues = {
         "inputText": Queue()
     }
-    elabs = False
+    tts_mode = 'glados'
 
 
     
     tts = TextToSpeach(publish_queues["inputText"],
                 stop_event=stop_event,
-                params={'elabs': elabs})
+                params={'tts_mode': tts_mode})
     
     tts.start()
 

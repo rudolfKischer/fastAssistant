@@ -22,16 +22,19 @@ class Assistant():
         
         local = False
 
-
+        # tts options
+        # elabs
+        # glados
+        # default
         if local:
-            elabs = False
-            generator_type = 'llamacpp'
-            # generator_type = 'chatgpt'
+            tts_mode = 'glados'
+            # generator_type = 'llamacpp'
+            generator_type = 'chatgpt'
             speach_speed = 1.38
         else:
-            elabs = True
+            tts_mode = 'glados'
             generator_type = 'chatgpt'
-            speach_speed = 1.0
+            speach_speed = 1.48
         
 
 
@@ -50,7 +53,7 @@ class Assistant():
                           })
         tts = TextToSpeach(generator.publish_queue,
                     stop_event=self.stop_event,
-                    params={'elabs': elabs})
+                    params={'tts_mode': tts_mode})
         speaker = Speaker(tts.publish_queue,
                     recorder_pause_event=speachToText.recorder.paused_event,
                     recorder_resume_event=speachToText.recorder.resume_event,

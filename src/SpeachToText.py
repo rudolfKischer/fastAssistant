@@ -151,11 +151,11 @@ def main():
 
 
   # text to speach
-  elabs = False
+  tts_mode = 'elabs'
 
   tts = TextToSpeach(generator.publish_queue,
               stop_event=stop_event,
-              params={'elabs': elabs})
+              params={'tts_mode': tts_mode})
 
 
 
